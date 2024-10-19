@@ -6,7 +6,9 @@
     "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
-    "elysia": "latest"
+    "elysia": "latest",
+    "redis": "^4.7.0",
+    "ts-ioc-container": "^33.2.0"
   },
   "devDependencies": {
     "bun-types": "latest"

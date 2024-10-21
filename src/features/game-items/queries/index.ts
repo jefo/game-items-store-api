@@ -1,3 +1,3 @@
-export * from "./get-items.query";
+export * from "./skinport/get-skinport-items.query";
 export * from "./types";
-export * from "./get-game-items.dto";
+export * from "./skinport/get-skinport-game-items.dto";

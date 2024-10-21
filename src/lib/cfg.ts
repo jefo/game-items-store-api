@@ -6,7 +6,11 @@ const ConfigSchema = Type.Object({
     url: Type.String({ format: "uri" }),
   }),
   postgres: Type.Object({
-    connection: Type.String(),
+    user: Type.String(),
+    host: Type.String(),
+    database: Type.String(),
+    password: Type.String(),
+    port: Type.Number(),
   }),
 });
 
@@ -20,7 +24,11 @@ export function loadConfig(): Config {
       url: process.env.REDIS_URL,
     },
     postgres: {
-      connection: process.env.DB_CONNECTION,
+      user: process.env.DB_USER,
+      host: process.env.DB_HOST,
+      database: process.env.DB_NAME,
+      password: process.env.DB_PASSWORD,
+      port: parseInt(process.env.DB_PORT || '5432', 10),
     },
   };
 

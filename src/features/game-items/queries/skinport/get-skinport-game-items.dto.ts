@@ -1,6 +1,6 @@
 import { t } from "elysia";
 
-export const GetGameItemsReqSchema = t.Object({
+export const GetSkinportGameItemsReqSchema = t.Object({
   app_id: t.Optional(
     t.String({
       description: "The app_id for the inventory`s game (default 730)",
@@ -14,7 +14,7 @@ export const GetGameItemsReqSchema = t.Object({
   ),
 });
 
-export const GameItemResSchema = t.Object({
+export const SkinportGameItemResSchema = t.Object({
   market_hash_name: t.String(),
   currency: t.String(),
   suggested_price: t.Number(),
@@ -28,6 +28,6 @@ export const GameItemResSchema = t.Object({
   updated_at: t.Integer(),
 });
 
-export type GetGameItemsReqType = typeof GetGameItemsReqSchema.static;
+export type GetSkinportGameItemsReqType = typeof GetSkinportGameItemsReqSchema.static;
 
-export type GameItemResType = typeof GameItemResSchema.static;
+export type SkinportGameItemResType = typeof SkinportGameItemResSchema.static;

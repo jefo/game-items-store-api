@@ -10,24 +10,13 @@ Vagrant.configure("2") do |config|
   config.vm.box = "cloud-image/ubuntu-22.04"
   
   config.vm.network "private_network", ip: "192.168.0.22"
-  config.vm.network "forwarded_port", guest: 6390, host: 6390
-  config.vm.network "forwarded_port", guest: 27017, host: 27017
-  config.vm.network "forwarded_port", guest: 8081, host: 8081
+  config.vm.network "forwarded_port", guest: 6379, host: 6379
+  config.vm.network "forwarded_port", guest: 5432, host: 5432
 
   config.vm.synced_folder ".", "/home/vagrant/app", type: "nfs", nfs_udp: false
 
   config.vagrant.plugins = ["vagrant-docker-compose"]
   
-  # ENV VARS
-  # $set_environment_variables = <<-SCRIPT
-  #     tee "/etc/profile.d/myvars.sh" > "/dev/null" <<EOF
-  #         export PATH="/home/vagrant/.moon/bin:$PATH"  
-  #         export DB_CONNECTION=mongodb://maxdev:IlyCoTATebOx@localhost:27017/
-  #     EOF
-  # SCRIPT
-
-  # config.vm.provision "shell", inline: $set_environment_variables, run: "always"
-
   # RUNTIME
   config.vm.provision "shell", inline: <<-SHELL 
       apt-get update -y

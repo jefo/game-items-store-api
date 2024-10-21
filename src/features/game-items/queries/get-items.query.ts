@@ -11,7 +11,7 @@ export class GetItemsQuery
   async doRequest(req: GetGameItemsReqType): Promise<GameItemResType> {
     try {
       const response = await axios.get<GameItemResType>(
-        "https://api.skinport.com/v1/items?app_id=730&currency=EUR&tradable=1",
+        "https://api.skinport.com/v1/items?app_id=730&currency=EUR&tradable=0",
         {
           params: req,
         }

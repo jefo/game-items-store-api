@@ -1,5 +1,5 @@
-import { Pool, PoolClient } from 'pg';
-import { cfg } from './cfg';
+import { Pool, PoolClient } from "pg";
+import { cfg } from "../cfg";
 
 const pool = new Pool({
   user: cfg.postgres.user,

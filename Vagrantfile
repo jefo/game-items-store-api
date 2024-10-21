@@ -9,7 +9,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.box = "cloud-image/ubuntu-22.04"
   
-  config.vm.network "private_network", ip: "192.168.0.22"
+  config.vm.network "private_network", ip: "192.168.0.23"
   config.vm.network "forwarded_port", guest: 6379, host: 6379
   config.vm.network "forwarded_port", guest: 5432, host: 5432
 

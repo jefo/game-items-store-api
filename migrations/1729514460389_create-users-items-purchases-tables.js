@@ -14,6 +14,7 @@ exports.up = (pgm) => {
     id: { type: 'serial', primaryKey: true },
     username: { type: 'varchar(255)', notNull: true, unique: true },
     email: { type: 'varchar(255)', notNull: true, unique: true },
+    balance: { type: 'numeric(10, 2)', notNull: true, default: 0 },
     created_at: { type: 'timestamp', notNull: true, default: pgm.func('current_timestamp') },
     updated_at: { type: 'timestamp', notNull: true, default: pgm.func('current_timestamp') }
   });
@@ -44,7 +45,6 @@ exports.up = (pgm) => {
       onDelete: 'CASCADE'
     },
     quantity: { type: 'integer', notNull: true, default: 1 },
-    total_price: { type: 'numeric(10, 2)', notNull: true },
     purchase_date: { type: 'timestamp', notNull: true, default: pgm.func('current_timestamp') }
   });
 

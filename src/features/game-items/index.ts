@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { IContainer, Registration as R } from "ts-ioc-container";
-import { BuyGameItemCmd } from "./commands/buy-game-item.cmd";
 import { BuyGameItemCmdType } from "./commands/types";
 import { GetGameItemsQueryType, GetSkinportItemsQuery } from "./queries";
+import { BuyGameItemCmd } from './commands';
 
 export function bindGameItemsModule(container: IContainer) {
   container.add(R.fromClass(BuyGameItemCmd).to(BuyGameItemCmdType));

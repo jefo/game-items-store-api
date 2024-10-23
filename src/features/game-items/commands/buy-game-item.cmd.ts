@@ -1,14 +1,12 @@
+import { key, provider, register, singleton } from "ts-ioc-container";
 import { ICmd } from "../../../lib/cqrs";
 import { db } from "../../../lib/db";
 import { BuyGameItemReqType } from "./buy-game-item.dto";
+import { BuyGameItemCmdType } from "./types";
 
-interface Item {
-  id: string;
-  price: number;
-  stock: number;
-}
-
-export class BuyGameItemCommand implements ICmd<BuyGameItemReqType> {
+@register(key(BuyGameItemCmdType))
+@provider(singleton())
+export class BuyGameItemCmd implements ICmd<BuyGameItemReqType> {
   async execute({ userId, itemId }: BuyGameItemReqType): Promise<void> {
     const client = await db.getClient();
 

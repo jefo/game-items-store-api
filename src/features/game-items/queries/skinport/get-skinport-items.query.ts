@@ -4,7 +4,11 @@ import {
   SkinportGameItemResType as SkinportGameItemResType,
   GetSkinportGameItemsReqType as GetSkinportGameItemsReqType,
 } from "./get-skinport-game-items.dto";
+import { GetGameItemsQueryType } from "../types";
+import { key, provider, register, singleton } from "ts-ioc-container";
 
+@register(key(GetGameItemsQueryType))
+@provider(singleton())
 export class GetSkinportItemsQuery extends CachingQuery<
   GetSkinportGameItemsReqType,
   SkinportGameItemResType

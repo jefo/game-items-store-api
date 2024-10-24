@@ -1,5 +1,5 @@
 import axios from "axios";
-import { CachingQuery } from "../../../../lib/caching-query";
+import { CachingQuery } from "@/lib/caching-query";
 import {
   SkinportGameItemResType as SkinportGameItemResType,
   GetSkinportGameItemsReqType as GetSkinportGameItemsReqType,

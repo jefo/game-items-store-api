@@ -4,10 +4,20 @@ import { db } from "../../../lib/db";
 import { BuyGameItemReqType } from "./buy-game-item.dto";
 import { BuyGameItemCmdType } from "./types";
 
+export interface PurchaseResult {
+  purchase: {
+    id: number;
+    item_name: string;
+    price: number;
+    created_at: string;
+  };
+  updatedBalance: number;
+}
+
 @register(key(BuyGameItemCmdType))
 @provider(singleton())
-export class BuyGameItemCmd implements ICmd<BuyGameItemReqType> {
-  async execute({ userId, itemId }: BuyGameItemReqType): Promise<void> {
+export class BuyGameItemCmd implements ICmd<BuyGameItemReqType, PurchaseResult> {
+  async execute({ userId, itemId, isTradable }: BuyGameItemReqType): Promise<PurchaseResult> {
     const client = await db.getClient();
 
     try {
@@ -15,8 +25,8 @@ export class BuyGameItemCmd implements ICmd<BuyGameItemReqType> {
 
       // Get current item state with FOR UPDATE to lock the row
       const itemResult = await client.query(
-        `SELECT id, price, stock 
-         FROM items 
+        `SELECT id, name, tradable_price, non_tradable_price 
+         FROM game_items 
          WHERE id = $1 
          FOR UPDATE`,
         [itemId]
@@ -27,9 +37,10 @@ export class BuyGameItemCmd implements ICmd<BuyGameItemReqType> {
       }
 
       const item = itemResult.rows[0];
+      const price = isTradable ? item.tradable_price : item.non_tradable_price;
 
-      if (item.stock <= 0) {
-        throw new Error("Item out of stock");
+      if (price === null) {
+        throw new Error(`${isTradable ? 'Tradable' : 'Non-tradable'} version of this item is not available`);
       }
 
       // Get current user balance with FOR UPDATE to lock the row
@@ -47,39 +58,45 @@ export class BuyGameItemCmd implements ICmd<BuyGameItemReqType> {
 
       const user = userResult.rows[0];
 
-      if (user.balance < item.price) {
+      if (user.balance < price) {
         throw new Error("Insufficient balance");
       }
 
       // Update user balance
-      await client.query(
+      const updatedUserResult = await client.query(
         `UPDATE users 
          SET balance = balance - $1
-         WHERE id = $2`,
-        [item.price, userId]
-      );
-
-      // Update item stock
-      await client.query(
-        `UPDATE items 
-         SET stock = stock - 1
-         WHERE id = $1 
-         AND stock > 0`,
-        [itemId]
+         WHERE id = $2
+         RETURNING balance`,
+        [price, userId]
       );
 
       // Create purchase record
-      await client.query(
+      const purchaseResult = await client.query(
         `INSERT INTO purchases (
           user_id, 
-          item_id, 
-          quantity, 
-          purchase_date
-        ) VALUES ($1, $2, $3, $4)`,
-        [userId, itemId, 1, new Date()]
+          item_id,
+          price,
+          is_tradable,
+          created_at
+        ) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        RETURNING id, created_at`,
+        [userId, itemId, price, isTradable]
       );
 
+      const purchase = purchaseResult.rows[0];
+
       await client.query("COMMIT");
+
+      return {
+        purchase: {
+          id: purchase.id,
+          item_name: item.name,
+          price: Number(price),
+          created_at: purchase.created_at
+        },
+        updatedBalance: Number(updatedUserResult.rows[0].balance)
+      };
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

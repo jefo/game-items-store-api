@@ -1,45 +1,33 @@
-import { createClient, RedisClientType } from "redis";
-import { type DataCache } from "./data-cache";
-import { cfg } from "../cfg";
+import { key, provider, register, singleton } from 'ts-ioc-container';
+import { DataCache } from './data-cache';
+import { DataCacheToken } from './tokens';
+import { createClient } from 'redis';
+import { cfg } from '../cfg';
 
+@register(key(DataCacheToken))
+@provider(singleton())
 export class RedisDataCache implements DataCache {
-  public redis: RedisClientType;
-  constructor() {
-    this.redis = createClient({
-      url: cfg.redis.url,
-    });
-    // TODO: logging
-    this.redis.on("error", (err) => {
-      console.error(err);
-    });
-    this.redis.on("connect", async () => {
-      console.log("redis connected");
-      await this.redis.flushAll();
-    });
-    this.redis.connect();
-  }
+    private client;
 
-  async get<TParams, TModel>(params: TParams) {
-    const sParams = this.serializeParams(params);
-    return this.redis
-      .get(sParams)
-      .then((str) => (str ? (JSON.parse(str) as TModel) : null));
-  }
-
-  async set<TKey>(key: TKey, data: any, ttl?: number) {
-    const sParams = this.serializeParams(key);
-    const serializedData = JSON.stringify(data);
-    if (ttl) {
-      this.redis.setEx(sParams, ttl, serializedData);
-    } else {
-      this.redis.set(sParams, serializedData);
+    constructor() {
+        this.client = createClient({
+            url: cfg.redis.url
+        });
+        this.client.connect();
     }
-  }
 
-  private serializeParams<TKey>(params: TKey): string {
-    if (typeof params === "string") {
-      return params;
+    async get<TParams, TModel>(params: TParams): Promise<TModel | null> {
+        const key = JSON.stringify(params);
+        const data = await this.client.get(key);
+        return data ? JSON.parse(data) : null;
     }
-    return JSON.stringify(params);
-  }
+
+    async set<TParams, TModel>(params: TParams, data: TModel, ttl?: number): Promise<void> {
+        const key = JSON.stringify(params);
+        if (ttl) {
+            await this.client.setEx(key, ttl, JSON.stringify(data));
+        } else {
+            await this.client.set(key, JSON.stringify(data));
+        }
+    }
 }

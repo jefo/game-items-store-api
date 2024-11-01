@@ -1,8 +1,12 @@
 import { t } from "elysia";
 
-export const BuyGemeItemReqSchema = t.Object({
-  userId: t.String({ description: "ID of the buyer" }),
-  itemId: t.String({ description: "The game item ID to buy" }),
+export const BuyGameItemReqSchema = t.Object({
+  itemId: t.Number(),
+  isTradable: t.Boolean()
 });
 
-export type BuyGameItemReqType = typeof BuyGemeItemReqSchema.static;
+export type BuyGameItemReqType = {
+  userId: number;
+  itemId: number;
+  isTradable: boolean;
+};

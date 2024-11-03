@@ -1,7 +1,5 @@
 import { Elysia, t } from "elysia";
 import { container } from "../container";
-import { rateLimit } from "../lib/middleware/rate-limit";
-import { csrfProtection } from "../lib/middleware/csrf";
 import { ICmd, IQuery } from "../lib/cqrs";
 import {
   LoginCommandType,

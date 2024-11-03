@@ -1,8 +1,9 @@
 import { Elysia } from 'elysia';
+import { Container } from 'ts-ioc-container';
+import { GetSessionQueryType, RefreshSessionCommandType, Session } from '../../features/auth';
+import { ICmd, IQuery } from '../cqrs';
+import { AuthenticationError } from '../errors';
 import { container } from '../../container';
-import { GetSessionQueryType } from '../../features/auth';
-import { IQuery } from '../cqrs';
-import { Session } from '../auth/redis-session';
 
 export interface AuthUser {
     id: number;
@@ -17,27 +18,32 @@ declare global {
     }
 }
 
-export const authMiddleware = new Elysia()
+const createAuthMiddleware = (container: Container) => new Elysia()
     .state(
         'getSessionQuery',
         container.resolve<IQuery<{ sessionId: string }, Session | null>>(GetSessionQueryType)
     )
-    .derive(async ({ request, cookie: { session }, set, store: { getSessionQuery } }) => {
+    .state(
+        'refreshSessionCommand',
+        container.resolve<ICmd<{ sessionId: string }, void>>(RefreshSessionCommandType)
+    )
+    .derive(async ({ request, cookie: { session }, store: { getSessionQuery, refreshSessionCommand } }) => {
         // Skip auth check for login endpoint
         if (request.url.endsWith('/api/auth/login')) {
             return {};
         }
 
         if (!session?.value) {
-            set.status = 401;
-            throw new Error('Unauthorized');
+            throw new AuthenticationError('No session provided');
         }
 
         const currentSession = await getSessionQuery.execute({ sessionId: session.value });
         if (!currentSession) {
-            set.status = 401;
-            throw new Error('Unauthorized');
+            throw new AuthenticationError('Invalid session');
         }
+
+        // Refresh session TTL after successful validation
+        await refreshSessionCommand.execute({ sessionId: session.value });
 
         return {
             user: {
@@ -46,3 +52,6 @@ export const authMiddleware = new Elysia()
             }
         };
     });
+
+// Export the middleware instance
+export const authMiddleware = createAuthMiddleware(container);

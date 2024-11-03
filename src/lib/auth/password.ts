@@ -15,9 +15,13 @@ export class PasswordManager {
 
     static async verify(password: string, encodedHash: string): Promise<boolean> {
         try {
+            // Extract salt from encoded hash
+            const parts = encodedHash.split('$');
+            const salt = Buffer.from(parts[4], 'base64');
+
             const result = await argon2id({
                 password,
-                salt: encodedHash,
+                salt,
                 parallelism: 1,
                 iterations: 256,
                 memorySize: 512,

@@ -1,7 +1,7 @@
 import { key, provider, register, singleton } from "ts-ioc-container";
 import { IQuery } from "../../../lib/cqrs";
-import { sessionManager, Session } from "../../../lib/auth/redis-session";
 import { GetSessionQueryType } from "./types";
+import { redisClient, getSessionKey, Session } from "../redis-config";
 
 export interface GetSessionDto {
     sessionId: string;
@@ -11,7 +11,10 @@ export interface GetSessionDto {
 @provider(singleton())
 export class GetSessionQuery implements IQuery<GetSessionDto, Session | null> {
     async execute({ sessionId }: GetSessionDto): Promise<Session | null> {
-        return await sessionManager.getSession(sessionId);
+        const data = await redisClient.get(getSessionKey(sessionId));
+        if (!data) return null;
+        
+        return JSON.parse(data) as Session;
     }
 }
 

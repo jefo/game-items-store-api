@@ -12,13 +12,15 @@ import {
   BuyGameItemReqType,
   BuyGameItemReqSchema,
 } from "../features/game-items/commands/buy-game-item.dto";
-import { AuthUser } from "../lib/middleware/auth";
+import { AuthUser, createAuthMiddleware } from "../lib/middleware/auth";
 
 interface StoreContext {
   query: GetSkinportGameItemsReqType;
   store: {
     getGameItemsQuery: IQuery<GetSkinportGameItemsReqType, SkinportGameItemResType>;
   };
+  user: AuthUser;
+  set: { status: number };
 }
 
 interface PurchaseContext {
@@ -31,6 +33,7 @@ interface PurchaseContext {
 }
 
 export const gameItemsController = new Elysia({ prefix: "/api/store" })
+  .use(createAuthMiddleware(container))
   .state(
     "getGameItemsQuery",
     container.resolve<
@@ -41,14 +44,43 @@ export const gameItemsController = new Elysia({ prefix: "/api/store" })
     "buyGameItemCmd",
     container.resolve<ICmd<BuyGameItemReqType>>(BuyGameItemCmdType)
   )
+  .onError(({ error, set }) => {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      set.status = 401;
+      return {
+        status: 'error',
+        error: 'Unauthorized'
+      };
+    }
+    return {
+      status: 'error',
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  })
   .get(
     "/",
-    async ({ query, store: { getGameItemsQuery } }: StoreContext) => {
-      const items = await getGameItemsQuery.execute(query);
-      return {
-        status: 'success',
-        data: items
-      };
+    async ({ query, store: { getGameItemsQuery }, user, set }: StoreContext) => {
+      if (!user) {
+        set.status = 401;
+        return {
+          status: 'error',
+          error: 'Unauthorized'
+        };
+      }
+
+      try {
+        const items = await getGameItemsQuery.execute(query);
+        return {
+          status: 'success',
+          data: items
+        };
+      } catch (error) {
+        set.status = 500;
+        return {
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error occurred'
+        };
+      }
     },
     {
       query: GetSkinportGameItemsReqSchema,
@@ -57,6 +89,14 @@ export const gameItemsController = new Elysia({ prefix: "/api/store" })
   .post(
     "/purchases",
     async ({ body, store: { buyGameItemCmd }, user, set }: PurchaseContext) => {
+      if (!user) {
+        set.status = 401;
+        return {
+          status: 'error',
+          error: 'Unauthorized'
+        };
+      }
+
       try {
         const result = await buyGameItemCmd.execute({
           ...body,

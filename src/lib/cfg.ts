@@ -3,7 +3,7 @@ import { TypeCompiler } from "@sinclair/typebox/compiler";
 
 const ConfigSchema = Type.Object({
   redis: Type.Object({
-    url: Type.String({ format: "uri" }),
+    url: Type.String(),  // Removed format: "uri" as it's not supported
   }),
   postgres: Type.Object({
     user: Type.String(),

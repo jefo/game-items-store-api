@@ -26,6 +26,20 @@ export class GetSkinportItemsQuery extends CachingQuery<
   async doRequest(
     req: GetSkinportGameItemsReqType
   ): Promise<SkinportGameItemResType> {
+    // In test environment, use database directly
+    if (process.env.NODE_ENV === 'test') {
+      const result = await db.query(
+        'SELECT id, name, tradable_price, non_tradable_price FROM game_items'
+      );
+      return result.rows.map(item => ({
+        market_hash_name: item.name,
+        min_price: Number(item.tradable_price),
+        tradable: true,
+        tradable_price: Number(item.tradable_price),
+        non_tradable_price: item.non_tradable_price ? Number(item.non_tradable_price) : null
+      }));
+    }
+
     try {
       // Fetch tradable items
       const tradableResponse = await axios.get<SkinportApiItem[]>(

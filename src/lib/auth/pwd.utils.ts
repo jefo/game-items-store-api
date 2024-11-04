@@ -1,12 +1,13 @@
 import { argon2id } from 'hash-wasm';
 
 export async function hashPassword(password: string): Promise<string> {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
     return await argon2id({
         password,
-        salt: crypto.getRandomValues(new Uint8Array(16)),
+        salt,
         parallelism: 1,
-        iterations: 256,
-        memorySize: 512, // KB
+        iterations: 2,
+        memorySize: 65536, // KB
         hashLength: 32,
         outputType: 'encoded'
     });
@@ -14,21 +15,27 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(password: string, encodedHash: string): Promise<boolean> {
     try {
-        // Extract salt from encoded hash
+        // Extract parameters from encoded hash
         const parts = encodedHash.split('$');
+        if (parts.length !== 6) return false;
+
+        // parts[4] is the base64 encoded salt
         const salt = Buffer.from(parts[4], 'base64');
 
+        // Generate hash with same parameters
         const result = await argon2id({
             password,
             salt,
             parallelism: 1,
-            iterations: 256,
-            memorySize: 512,
+            iterations: 2,
+            memorySize: 65536,
             hashLength: 32,
             outputType: 'encoded'
         });
+
         return result === encodedHash;
-    } catch {
+    } catch (error) {
+        console.error('Password verification error:', error);
         return false;
     }
 }

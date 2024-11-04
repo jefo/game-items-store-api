@@ -30,4 +30,12 @@ export class RedisDataCache implements DataCache {
             await this.client.set(key, JSON.stringify(data));
         }
     }
+
+    async clear(): Promise<void> {
+        await this.client.flushDb();
+    }
+
+    async disconnect(): Promise<void> {
+        await this.client.disconnect();
+    }
 }

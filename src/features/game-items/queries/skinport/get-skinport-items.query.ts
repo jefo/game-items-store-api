@@ -5,8 +5,15 @@ import {
   GetSkinportGameItemsReqType,
 } from "./get-skinport-game-items.dto";
 import { GetGameItemsQueryType } from "../types";
-import { key, provider, register, singleton } from "ts-ioc-container";
-import { db } from "../../../../lib/db";
+import {
+  key,
+  provider,
+  register,
+  singleton,
+  inject,
+  by,
+} from "ts-ioc-container";
+import { Pool } from "pg";
 
 interface SkinportApiItem {
   market_hash_name: string;
@@ -20,6 +27,10 @@ export class GetSkinportItemsQuery extends CachingQuery<
   GetSkinportGameItemsReqType,
   SkinportGameItemResType
 > {
+  constructor(@inject(by.key("DbPool")) private db: Pool) {
+    super();
+  }
+
   // source endpoint is cached by 5 minutes.
   protected cacheTtl: number = 5 * 60;
 
@@ -27,16 +38,18 @@ export class GetSkinportItemsQuery extends CachingQuery<
     req: GetSkinportGameItemsReqType
   ): Promise<SkinportGameItemResType> {
     // In test environment, use database directly
-    if (process.env.NODE_ENV === 'test') {
-      const result = await db.query(
-        'SELECT id, name, tradable_price, non_tradable_price FROM game_items'
+    if (process.env.NODE_ENV === "test") {
+      const result = await this.db.query(
+        "SELECT id, name, tradable_price, non_tradable_price FROM game_items"
       );
-      return result.rows.map(item => ({
+      return result.rows.map((item) => ({
         market_hash_name: item.name,
         min_price: Number(item.tradable_price),
         tradable: true,
         tradable_price: Number(item.tradable_price),
-        non_tradable_price: item.non_tradable_price ? Number(item.non_tradable_price) : null
+        non_tradable_price: item.non_tradable_price
+          ? Number(item.non_tradable_price)
+          : null,
       }));
     }
 
@@ -49,8 +62,8 @@ export class GetSkinportItemsQuery extends CachingQuery<
             app_id: "730",
             currency: "EUR",
             tradable: "1",
-            ...req
-          }
+            ...req,
+          },
         }
       );
 
@@ -62,17 +75,20 @@ export class GetSkinportItemsQuery extends CachingQuery<
             app_id: "730",
             currency: "EUR",
             tradable: "0",
-            ...req
-          }
+            ...req,
+          },
         }
       );
 
       // Update local database
-      const client = await db.getClient();
+      const client = await this.db.connect();
       try {
-        await client.query('BEGIN');
+        await client.query("BEGIN");
 
-        for (const item of [...tradableResponse.data, ...nonTradableResponse.data]) {
+        for (const item of [
+          ...tradableResponse.data,
+          ...nonTradableResponse.data,
+        ]) {
           await client.query(
             `INSERT INTO game_items (
               skinport_id,
@@ -96,26 +112,28 @@ export class GetSkinportItemsQuery extends CachingQuery<
               item.market_hash_name,
               item.market_hash_name,
               item.tradable === true ? item.min_price : null,
-              item.tradable === false ? item.min_price : null
+              item.tradable === false ? item.min_price : null,
             ]
           );
         }
 
-        await client.query('COMMIT');
+        await client.query("COMMIT");
       } catch (error) {
-        await client.query('ROLLBACK');
+        await client.query("ROLLBACK");
         throw error;
       } finally {
         client.release();
       }
 
       // Return combined and transformed data
-      return tradableResponse.data.map(item => ({
+      return tradableResponse.data.map((item) => ({
         ...item,
         tradable_price: item.min_price,
-        non_tradable_price: nonTradableResponse.data.find(
-          (ni: SkinportApiItem) => ni.market_hash_name === item.market_hash_name
-        )?.min_price || null
+        non_tradable_price:
+          nonTradableResponse.data.find(
+            (ni: SkinportApiItem) =>
+              ni.market_hash_name === item.market_hash_name
+          )?.min_price || null,
       }));
     } catch (error) {
       console.error("Error fetching game items:", error);

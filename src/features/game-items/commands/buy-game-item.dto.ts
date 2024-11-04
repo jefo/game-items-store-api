@@ -2,7 +2,7 @@ import { t } from "elysia";
 
 export const BuyGameItemReqSchema = t.Object({
   itemId: t.Number(),
-  isTradable: t.Boolean()
+  isTradable: t.Boolean(),
 });
 
 export type BuyGameItemReqType = {

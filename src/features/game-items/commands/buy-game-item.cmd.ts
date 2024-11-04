@@ -1,8 +1,16 @@
-import { key, provider, register, singleton } from "ts-ioc-container";
+import {
+  key,
+  provider,
+  register,
+  singleton,
+  inject,
+  by,
+} from "ts-ioc-container";
 import { ICmd } from "../../../lib/cqrs";
-import { db } from "../../../lib/db";
+import { Pool } from "pg";
 import { BuyGameItemReqType } from "./buy-game-item.dto";
 import { BuyGameItemCmdType } from "./types";
+import { NotFoundError, ValidationError } from "../../../lib/errors";
 
 export interface PurchaseResult {
   purchase: {
@@ -16,9 +24,17 @@ export interface PurchaseResult {
 
 @register(key(BuyGameItemCmdType))
 @provider(singleton())
-export class BuyGameItemCmd implements ICmd<BuyGameItemReqType, PurchaseResult> {
-  async execute({ userId, itemId, isTradable }: BuyGameItemReqType): Promise<PurchaseResult> {
-    const client = await db.getClient();
+export class BuyGameItemCmd
+  implements ICmd<BuyGameItemReqType, PurchaseResult>
+{
+  constructor(@inject(by.key("DbPool")) private db: Pool) {}
+
+  async execute({
+    userId,
+    itemId,
+    isTradable,
+  }: BuyGameItemReqType): Promise<PurchaseResult> {
+    const client = await this.db.connect();
 
     try {
       await client.query("BEGIN");
@@ -33,14 +49,18 @@ export class BuyGameItemCmd implements ICmd<BuyGameItemReqType, PurchaseResult> 
       );
 
       if (itemResult.rowCount === 0) {
-        throw new Error("Item not found");
+        throw new NotFoundError("Item not found");
       }
 
       const item = itemResult.rows[0];
       const price = isTradable ? item.tradable_price : item.non_tradable_price;
 
       if (price === null) {
-        throw new Error(`${isTradable ? 'Tradable' : 'Non-tradable'} version of this item is not available`);
+        throw new ValidationError(
+          `${
+            isTradable ? "Tradable" : "Non-tradable"
+          } version of this item is not available`
+        );
       }
 
       // Get current user balance with FOR UPDATE to lock the row
@@ -53,13 +73,13 @@ export class BuyGameItemCmd implements ICmd<BuyGameItemReqType, PurchaseResult> 
       );
 
       if (userResult.rowCount === 0) {
-        throw new Error("User not found");
+        throw new NotFoundError("User not found");
       }
 
       const user = userResult.rows[0];
 
       if (user.balance < price) {
-        throw new Error("Insufficient balance");
+        throw new ValidationError("Insufficient balance");
       }
 
       // Update user balance
@@ -93,9 +113,9 @@ export class BuyGameItemCmd implements ICmd<BuyGameItemReqType, PurchaseResult> 
           id: purchase.id,
           item_name: item.name,
           price: Number(price),
-          created_at: purchase.created_at
+          created_at: purchase.created_at,
         },
-        updatedBalance: Number(updatedUserResult.rows[0].balance)
+        updatedBalance: Number(updatedUserResult.rows[0].balance),
       };
     } catch (error) {
       await client.query("ROLLBACK");
@@ -105,5 +125,3 @@ export class BuyGameItemCmd implements ICmd<BuyGameItemReqType, PurchaseResult> 
     }
   }
 }
-
-export const BuyGameItemCommandType = Symbol("BuyGameItemCommand");

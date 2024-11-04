@@ -25,28 +25,33 @@ export const auth = (config: AuthPluginConfig = {}) => {
         "sessionManager",
         pluginContainer.resolve<ISessionManager>(SessionManagerType)
       )
-      .derive(
+      .derive<{ user?: AuthUser }>(
         async ({
           request,
-          cookie: { session },
+          cookie: { sessionId },
           sessionManager,
+          set,
         }) => {
           // Skip auth check for excluded paths
           if (excludePaths.some((path) => request.url.endsWith(path))) {
             return {};
           }
 
-          if (!session?.value) {
+          // Get session ID from cookie
+          const sid = sessionId?.value;
+          if (!sid) {
+            set.status = 401;
             throw new AuthenticationError("No session provided");
           }
 
-          const currentSession = await sessionManager.getSession(session.value);
+          const currentSession = await sessionManager.getSession(sid);
           if (!currentSession) {
+            set.status = 401;
             throw new AuthenticationError("Invalid session");
           }
 
           // Refresh session TTL after successful validation
-          await sessionManager.refreshSession(session.value);
+          await sessionManager.refreshSession(sid);
 
           return {
             user: {
@@ -55,5 +60,18 @@ export const auth = (config: AuthPluginConfig = {}) => {
             },
           };
         }
-      );
+      )
+      .onError(({ error, set }) => {
+        if (error instanceof AuthenticationError) {
+          set.status = 401;
+          return {
+            status: "error",
+            error: {
+              code: "AUTHENTICATION_ERROR",
+              message: error.message,
+            },
+          };
+        }
+        throw error;
+      });
 };

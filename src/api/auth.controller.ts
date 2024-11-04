@@ -1,17 +1,16 @@
 import { Elysia, t } from "elysia";
 import { container } from "../container";
-import { ICmd, IQuery } from "../lib/cqrs";
+import { ICmd } from "../lib/cqrs";
 import {
   LoginCommandType,
   ChangePasswordCommandType,
-  DestroySessionCommandType,
-  GetSessionQueryType,
   LoginDto,
   LoginResult,
   ChangePasswordDto,
-  Session,
+  SessionManagerType
 } from "../features/auth";
 import { auth, AuthUser } from "../lib/middleware/auth";
+import { ISessionManager } from "../lib/auth/redis-session";
 
 interface LoginContext {
   body: LoginDto;
@@ -25,6 +24,7 @@ interface LoginContext {
     };
   };
   loginCommand: ICmd<LoginDto, LoginResult>;
+  sessionManager: ISessionManager;
 }
 
 interface ChangePasswordContext {
@@ -35,7 +35,6 @@ interface ChangePasswordContext {
     };
   };
   changePasswordCommand: ICmd<ChangePasswordDto, void>;
-  getSessionQuery: IQuery<{ sessionId: string }, Session | null>;
   user: AuthUser;
 }
 
@@ -46,7 +45,7 @@ interface LogoutContext {
       maxAge?: number;
     };
   };
-  destroySessionCommand: ICmd<{ sessionId: string }, void>;
+  sessionManager: ISessionManager;
   user: AuthUser;
 }
 
@@ -61,24 +60,19 @@ export const authController = new Elysia({ prefix: "/api/auth" })
     container.resolve<ICmd<ChangePasswordDto, void>>(ChangePasswordCommandType)
   )
   .decorate(
-    "destroySessionCommand",
-    container.resolve<ICmd<{ sessionId: string }, void>>(
-      DestroySessionCommandType
-    )
-  )
-  .decorate(
-    "getSessionQuery",
-    container.resolve<IQuery<{ sessionId: string }, Session | null>>(
-      GetSessionQueryType
-    )
+    "sessionManager",
+    container.resolve<ISessionManager>(SessionManagerType)
   )
   .post(
     "/login",
-    async ({ body, cookie: { session }, loginCommand }: LoginContext) => {
+    async ({ body, cookie: { session }, loginCommand, sessionManager }: LoginContext) => {
       const result = await loginCommand.execute(body);
 
+      // Create session
+      const sessionId = await sessionManager.createSession(result.userId, result.username);
+
       // Set session cookie
-      session.value = result.sessionId;
+      session.value = sessionId;
       session.httpOnly = true;
       session.secure = process.env.NODE_ENV !== "test";
       session.sameSite = "lax";
@@ -118,8 +112,8 @@ export const authController = new Elysia({ prefix: "/api/auth" })
   )
   .post(
     "/logout",
-    async ({ cookie: { session }, destroySessionCommand }: LogoutContext) => {
-      await destroySessionCommand.execute({ sessionId: session.value });
+    async ({ cookie: { session }, sessionManager }: LogoutContext) => {
+      await sessionManager.destroySession(session.value);
 
       // Clear the session cookie
       session.value = "";

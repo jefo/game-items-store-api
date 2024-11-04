@@ -1,13 +1,9 @@
 import { Elysia } from "elysia";
 import { Container } from "ts-ioc-container";
-import {
-  GetSessionQueryType,
-  RefreshSessionCommandType,
-  Session,
-} from "../../features/auth";
-import { ICmd, IQuery } from "../cqrs";
+import { SessionManagerType } from "../../features/auth";
 import { AuthenticationError } from "../errors";
 import { container } from "../../container";
+import { ISessionManager } from "../auth/redis-session";
 
 export interface AuthUser {
   id: number;
@@ -26,23 +22,14 @@ export const auth = (config: AuthPluginConfig = {}) => {
   return (app: Elysia) =>
     app
       .decorate(
-        "getSessionQuery",
-        pluginContainer.resolve<IQuery<{ sessionId: string }, Session | null>>(
-          GetSessionQueryType
-        )
-      )
-      .decorate(
-        "refreshSessionCommand",
-        pluginContainer.resolve<ICmd<{ sessionId: string }, void>>(
-          RefreshSessionCommandType
-        )
+        "sessionManager",
+        pluginContainer.resolve<ISessionManager>(SessionManagerType)
       )
       .derive(
         async ({
           request,
           cookie: { session },
-          getSessionQuery,
-          refreshSessionCommand,
+          sessionManager,
         }) => {
           // Skip auth check for excluded paths
           if (excludePaths.some((path) => request.url.endsWith(path))) {
@@ -53,15 +40,13 @@ export const auth = (config: AuthPluginConfig = {}) => {
             throw new AuthenticationError("No session provided");
           }
 
-          const currentSession = await getSessionQuery.execute({
-            sessionId: session.value,
-          });
+          const currentSession = await sessionManager.getSession(session.value);
           if (!currentSession) {
             throw new AuthenticationError("Invalid session");
           }
 
           // Refresh session TTL after successful validation
-          await refreshSessionCommand.execute({ sessionId: session.value });
+          await sessionManager.refreshSession(session.value);
 
           return {
             user: {

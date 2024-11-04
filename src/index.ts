@@ -3,7 +3,6 @@ import { Elysia } from "elysia";
 import "./container";
 import { gameItemsController } from "./api/game-items.controller";
 import { authController } from "./api/auth.controller";
-import { auth } from "./lib/middleware/auth";
 import { errorHandler } from "./lib/middleware/error-handler";
 
 const app = new Elysia()

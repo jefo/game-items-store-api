@@ -1,7 +1,7 @@
 import { key, provider, register, singleton } from "ts-ioc-container";
 import { ICmd } from "../../../lib/cqrs";
 import { db } from "../../../lib/db";
-import { PasswordManager } from "../../../lib/auth/password";
+import { validatePassword, verifyPassword, hashPassword } from "../../../lib/auth/pwd.utils";
 import { ChangePasswordCommandType } from "./types";
 
 export interface ChangePasswordDto {
@@ -15,7 +15,7 @@ export interface ChangePasswordDto {
 export class ChangePasswordCommand implements ICmd<ChangePasswordDto, void> {
     async execute({ userId, currentPassword, newPassword }: ChangePasswordDto): Promise<void> {
         // Validate new password
-        const validationError = PasswordManager.validatePassword(newPassword);
+        const validationError = validatePassword(newPassword);
         if (validationError) {
             throw new Error(validationError);
         }
@@ -27,12 +27,12 @@ export class ChangePasswordCommand implements ICmd<ChangePasswordDto, void> {
         );
         const user = result.rows[0];
 
-        if (!user || !(await PasswordManager.verify(currentPassword, user.password_hash))) {
+        if (!user || !(await verifyPassword(currentPassword, user.password_hash))) {
             throw new Error('Current password is incorrect');
         }
 
         // Update password
-        const newPasswordHash = await PasswordManager.hash(newPassword);
+        const newPasswordHash = await hashPassword(newPassword);
         await db.query(
             'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
             [newPasswordHash, userId]

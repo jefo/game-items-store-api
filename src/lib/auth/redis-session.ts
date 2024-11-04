@@ -6,24 +6,25 @@ export interface Session {
     username: string;
 }
 
-export const RedisSessionManagerType = Symbol('RedisSessionManager');
+export interface ISessionManager {
+    createSession(userId: number, username: string): Promise<string>;
+    getSession(sessionId: string): Promise<Session | null>;
+    destroySession(sessionId: string): Promise<void>;
+    refreshSession(sessionId: string): Promise<void>;
+}
 
-export class RedisSessionManager {
+export class RedisSessionManager implements ISessionManager {
     private client;
     private readonly sessionPrefix = 'session:';
     private readonly sessionTTL = 24 * 60 * 60; // 24 hours in seconds
 
-    constructor(client?: any) {
-        if (client) {
-            this.client = client;
-        } else {
-            this.client = createClient({
-                url: cfg.redis.url
-            });
-            
-            this.client.on('error', (error: Error) => console.error('Redis Client Error', error));
-            this.client.connect();
-        }
+    constructor() {
+        this.client = createClient({
+            url: cfg.redis.url
+        });
+        
+        this.client.on('error', (error: Error) => console.error('Redis Client Error', error));
+        this.client.connect();
     }
 
     async createSession(userId: number, username: string): Promise<string> {
@@ -61,12 +62,3 @@ export class RedisSessionManager {
         return `${this.sessionPrefix}${sessionId}`;
     }
 }
-
-// Create default instance
-const defaultClient = createClient({
-    url: cfg.redis.url
-});
-defaultClient.on('error', (error: Error) => console.error('Redis Client Error', error));
-defaultClient.connect();
-
-export const sessionManager = new RedisSessionManager(defaultClient);

@@ -1,8 +1,7 @@
 import { key, provider, register, singleton } from "ts-ioc-container";
 import { ICmd } from "../../../lib/cqrs";
 import { db } from "../../../lib/db";
-import { PasswordManager } from "../../../lib/auth/password";
-import { sessionManager } from "../../../lib/auth/redis-session";
+import { verifyPassword } from "../../../lib/auth/pwd.utils";
 import { LoginCommandType } from "./types";
 
 export interface LoginDto {
@@ -11,7 +10,7 @@ export interface LoginDto {
 }
 
 export interface LoginResult {
-    sessionId: string;
+    userId: number;
     username: string;
     balance: number;
 }
@@ -26,18 +25,14 @@ export class LoginCommand implements ICmd<LoginDto, LoginResult> {
         );
         const user = result.rows[0];
 
-        if (!user || !(await PasswordManager.verify(password, user.password_hash))) {
+        if (!user || !(await verifyPassword(password, user.password_hash))) {
             throw new Error('Invalid username or password');
         }
 
-        const sessionId = await sessionManager.createSession(user.id, user.username);
-
         return {
-            sessionId,
+            userId: user.id,
             username: user.username,
             balance: Number(user.balance)
         };
     }
 }
-
-export { LoginCommandType };

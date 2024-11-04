@@ -2,7 +2,7 @@
   "name": "game-items-store-api",
   "version": "1.0.50",
   "scripts": {
-    "test": "bun test --preload ./src/test/setup.ts",
+    "test": "NODE_ENV=test DB_HOST=192.168.0.23 DB_USER=postgres DB_PASSWORD=postgres REDIS_URL=redis://192.168.0.23:6379 bun test --verbose",
     "dev": "bun run --watch src/index.ts",
     "migrate": "bun -r dotenv/config ./node_modules/.bin/node-pg-migrate"
   },

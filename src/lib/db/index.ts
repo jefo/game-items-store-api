@@ -40,7 +40,7 @@ class DB {
 export const db = new DB();
 
 export function bindDbModule(container: IContainer) {
-  container.add(R.fromValue(db).to("DB"));
+  container.add(R.fromValue(db).to("DbPool"));
 }
 
 export * from "./models";

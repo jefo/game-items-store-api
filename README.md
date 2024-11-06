@@ -2,57 +2,6 @@
 
 A high-performance backend API for managing game item transactions, built with modern architectural patterns and best practices.
 
-## Локальная разработка
-
-### Предварительные требования
-
-- Bun runtime
-- Docker и Docker Compose
-- Git
-
-### Установка и запуск
-
-1. Клонируйте репозиторий:
-```bash
-git clone <repository-url>
-cd game-items-store-api
-```
-
-2. Установите зависимости:
-```bash
-bun install
-```
-
-3. Создайте файл `.env` в корне проекта:
-```env
-NODE_ENV=development
-DB_HOST=localhost
-DB_USER=postgres
-DB_PASSWORD=postgres
-REDIS_URL=redis://localhost:6379
-```
-
-4. Запустите инфраструктуру:
-```bash
-docker-compose up -d
-```
-
-5. Примените миграции:
-```bash
-bun run migrate up
-```
-
-6. Запустите сервер разработки:
-```bash
-bun run dev
-```
-
-### Тестирование
-
-```bash
-bun test
-```
-
 ## Architecture Overview
 
 ### Core Patterns & Design Decisions
@@ -145,3 +94,55 @@ src/
 - PostgreSQL 13+
 - Redis 6+
 - Bun runtime
+
+## Локальная разработка
+
+### Предварительные требования
+
+- Bun runtime
+- Docker и Docker Compose
+- Git
+
+### Установка и запуск
+
+1. Клонируйте репозиторий:
+```bash
+git clone <repository-url>
+cd game-items-store-api
+```
+
+2. Установите зависимости:
+```bash
+bun install
+```
+
+3. Создайте файл `.env` в корне проекта:
+```env
+NODE_ENV=development
+DB_HOST=localhost
+DB_USER=postgres
+DB_PASSWORD=postgres
+REDIS_URL=redis://localhost:6379
+```
+
+4. Запустите инфраструктуру:
+```bash
+docker-compose up -d
+```
+
+5. Примените миграции:
+```bash
+bun run migrate up
+```
+
+6. Запустите сервер разработки:
+```bash
+bun run dev
+```
+
+### Тестирование
+
+```bash
+bun test
+```
+
